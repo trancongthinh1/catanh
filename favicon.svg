@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="116" fill="#EAF0EC"/>
+  <!-- little cut-out blob -->
+  <path d="M378 92c30-8 58 10 62 38s-14 52-40 56-50-8-56-34 8-54 34-60z" fill="#F2C14E"/>
+  <circle cx="436" cy="206" r="9" fill="#F2C14E"/>
+  <circle cx="352" cy="200" r="6" fill="#F2C14E"/>
+  <g transform="rotate(-18 256 270)">
+    <!-- blades -->
+    <path d="M226 286 C 212 220, 194 150, 170 76 C 222 132, 264 206, 282 270 Z" fill="#fff" stroke="#1C2A2F" stroke-width="12" stroke-linejoin="round"/>
+    <path d="M286 286 C 300 220, 318 150, 342 76 C 290 132, 248 206, 230 270 Z" fill="#fff" stroke="#1C2A2F" stroke-width="12" stroke-linejoin="round"/>
+    <!-- arms -->
+    <path d="M250 272 L 210 336" stroke="#2B59C3" stroke-width="34" stroke-linecap="round"/>
+    <path d="M262 272 L 302 336" stroke="#EF7FA0" stroke-width="34" stroke-linecap="round"/>
+    <!-- handles -->
+    <circle cx="190" cy="384" r="56" fill="none" stroke="#2B59C3" stroke-width="32"/>
+    <circle cx="322" cy="384" r="56" fill="none" stroke="#EF7FA0" stroke-width="32"/>
+    <!-- pivot face -->
+    <circle cx="256" cy="268" r="30" fill="#F2C14E" stroke="#1C2A2F" stroke-width="10"/>
+    <circle cx="246" cy="264" r="4.5" fill="#1C2A2F"/>
+    <circle cx="266" cy="264" r="4.5" fill="#1C2A2F"/>
+    <path d="M248 276 q8 7 16 0" fill="none" stroke="#1C2A2F" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <circle cx="112" cy="318" r="7" fill="#2B59C3"/>
+  <path d="M96 176l6 14 14 6-14 6-6 14-6-14-14-6 14-6z" fill="#EF7FA0"/>
+</svg>

@@ -1,6 +1,6 @@
 // Bộ nhớ đệm để trang mở được cả khi mất mạng.
 // Khi sửa trang, tăng số phiên bản để máy người dùng tải bản mới.
-const CACHE = 'cat-anh-v1';
+const CACHE = 'cat-anh-v2';
 const ASSETS = [
   './',
   './index.html',

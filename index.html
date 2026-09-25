@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Cắt ảnh theo vết loang</title>
-<meta name="description" content="Cắt ảnh theo 30 hình vết loang, nét cọ, giấy xé… và tải về PNG nền trong suốt. Chạy ngay trên trình duyệt, ảnh không rời khỏi máy bạn.">
+<meta name="description" content="Cắt ảnh theo 54 hình vết loang, nét cọ, giấy xé… và tải về PNG nền trong suốt. Chạy ngay trên trình duyệt, ảnh không rời khỏi máy bạn.">
 <meta name="theme-color" content="#EAF0EC" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#131A1C" media="(prefers-color-scheme: dark)">
 <link rel="icon" href="icons/favicon.ico" sizes="any">
@@ -230,10 +230,108 @@ input[type=color]{width:40px;height:32px;border:0;background:none;padding:0;curs
     {g:G3,id:'moon',name:'Trăng khuyết',fixed:true,gen:()=>'M130 28A78 78 0 1 0 130 172A80 80 0 0 1 130 28Z'},
     {g:G3,id:'speech',name:'Bong bóng thoại',seed:33,gen:r=>smooth(radialXY(12,80,58,(i,r)=>0.94+r()*0.08,r,100,86))+'M66 128L106 140L50 184Z'},
   ];
+  // ---------- organic raster shapes (dry brush, watercolor ink) ----------
+  const M=600;
+  function mk(){const c=document.createElement('canvas');c.width=c.height=M;const x=c.getContext('2d');x.fillStyle=x.strokeStyle='#000';x.lineCap='round';x.lineJoin='round';return [c,x]}
+  function noiseField(r,cells){
+    const w=cells+1,g=new Float32Array(w*w);for(let i=0;i<g.length;i++)g[i]=r()*2-1;
+    return (u,v)=>{const fx=u*cells,fy=v*cells,ix=Math.min(cells-1,fx|0),iy=Math.min(cells-1,fy|0),tx=fx-ix,ty=fy-iy,
+      sx=tx*tx*(3-2*tx),sy=ty*ty*(3-2*ty),a=g[iy*w+ix],b=g[iy*w+ix+1],c=g[(iy+1)*w+ix],d=g[(iy+1)*w+ix+1];
+      return a+(b-a)*sx+(c-a)*sy+(a-b-c+d)*sx*sy};
+  }
+  // displace pixels with smooth noise so edges become ragged and organic
+  function roughen(c,r,amp,coarse=16,fine=70){
+    const x=c.getContext('2d'),src=x.getImageData(0,0,M,M),dst=x.createImageData(M,M),s=src.data,d=dst.data;
+    const n1=noiseField(r,coarse),n2=noiseField(r,coarse),n3=noiseField(r,fine),n4=noiseField(r,fine);
+    for(let y=0;y<M;y++){const v=y/M;for(let X=0;X<M;X++){const u=X/M;
+      const sx=Math.round(X+amp*(n1(u,v)+0.6*n3(u,v))),sy=Math.round(y+amp*(n2(u,v)+0.6*n4(u,v)));
+      d[(y*M+X)*4+3]=(sx<0||sy<0||sx>=M||sy>=M)?0:s[(sy*M+sx)*4+3]}}
+    x.putImageData(dst,0,0);
+    // crop to the painted area so every shape fills the frame
+    let x0=M,y0=M,x1=0,y1=0;
+    for(let y=0;y<M;y++)for(let X=0;X<M;X++)if(d[(y*M+X)*4+3]>16){if(X<x0)x0=X;if(X>x1)x1=X;if(y<y0)y0=y;if(y>y1)y1=y}
+    if(x1<=x0)return c;
+    const t=document.createElement('canvas');t.width=x1-x0+1;t.height=y1-y0+1;
+    t.getContext('2d').drawImage(c,x0,y0,t.width,t.height,0,0,t.width,t.height);return t;
+  }
+  function dryStroke(x,r,{L=440,H=150,ang=0,curve=0,dry=0.5,n=64,cx=M/2,cy=M/2}={}){
+    x.save();x.translate(cx,cy);x.rotate(ang*Math.PI/180);
+    const yc=px=>curve*Math.cos(px/L*Math.PI);
+    for(let i=0;i<n;i++){
+      const e=i/(n-1)*2-1,edge=Math.abs(e),y=e*H/2+(r()-.5)*H/n*2;
+      x.lineWidth=H/n*(1.8+r()*2.4);
+      const x0=-L/2+L*(0.02+r()*r()*0.22+edge*edge*0.28*r()),x1=L/2-L*(0.02+r()*r()*0.26+edge*edge*0.28*r());
+      let px=x0;
+      while(px<x1){const nx=Math.min(x1,px+12+r()*46),end=Math.min(px-x0,x1-nx)/L;
+        const skip=r()<(end<0.16?dry*0.6:dry*0.04);
+        if(!skip){x.beginPath();x.moveTo(px,y+yc(px));x.lineTo(nx,y+yc(nx));x.stroke()}
+        px=nx+(skip?4+r()*14:0)}
+      if(r()<0.25){x.lineWidth=1.2+r()*2;const dir=r()<.5?-1:1,sx=dir<0?x0:x1,len=15+r()*50;
+        x.beginPath();x.moveTo(sx,y+yc(sx));x.lineTo(sx+dir*len,y+yc(sx)+(r()-.5)*6);x.stroke()}
+    }
+    x.restore();
+  }
+  function dry(strokes,amp=5){return r=>{const [c,x]=mk();strokes.forEach(o=>dryStroke(x,r,o));return roughen(c,r,amp)}}
+  function scribble(r){const [c,x]=mk();x.translate(M/2,M/2);
+    for(let k=0;k<80;k++){const rr=190*Math.sqrt(r()),a0=r()*Math.PI*2;x.lineWidth=8+r()*20;
+      x.beginPath();x.ellipse((r()-.5)*24,(r()-.5)*24,rr,rr*(0.88+r()*0.24),r()*3,a0,a0+Math.PI*(1+r()*1.1));x.stroke()}
+    x.beginPath();x.arc(0,0,80,0,7);x.fill();x.setTransform(1,0,0,1,0,0);return roughen(c,r,5)}
+  function blob(x,r,cx,cy,R,{wob=0.1,spikes=0,spikeLen=0.4,sx=1,sy=1,rot=0,balls=true}={}){
+    const waves=[];for(let f=2;f<=9;f++)waves.push([f,r()*7,wob*(0.5+r())*2/f]);
+    const sp=[];for(let i=0;i<spikes;i++)sp.push([r()*Math.PI*2,0.025+r()*0.05,spikeLen*(0.25+r()*0.9)]);
+    const cr=Math.cos(rot),sr=Math.sin(rot),pt=(t,k)=>{const px=Math.cos(t)*R*k*sx,py=Math.sin(t)*R*k*sy;return [cx+px*cr-py*sr,cy+px*sr+py*cr]};
+    x.beginPath();
+    for(let i=0;i<=480;i++){const t=i/480*Math.PI*2;let k=1;
+      for(const [f,p,a] of waves)k+=a*Math.sin(f*t+p);
+      for(const [a0,w,l] of sp){let dd=Math.abs(t-a0);dd=Math.min(dd,Math.PI*2-dd);k+=l*Math.exp(-((dd/w)**2))}
+      const [X,Y]=pt(t,k);i?x.lineTo(X,Y):x.moveTo(X,Y)}
+    x.fill();
+    if(balls)for(const [a0,w,l] of sp)if(l>0.18&&r()<0.6){const [X,Y]=pt(a0,1+l*1.05);x.beginPath();x.arc(X,Y,R*(0.03+r()*0.04),0,7);x.fill()}
+  }
+  function sats(x,r,cx,cy,n,dMin,dMax,sMin,sMax){
+    for(let i=0;i<n;i++){const a=r()*Math.PI*2,d=dMin+r()*(dMax-dMin),s=sMin+r()*(sMax-sMin);
+      let X=cx+Math.cos(a)*d,Y=cy+Math.sin(a)*d;X=Math.max(s+8,Math.min(M-s-8,X));Y=Math.max(s+8,Math.min(M-s-8,Y));
+      blob(x,r,X,Y,s,{wob:0.12,balls:false})}
+  }
+  const ink=fn=>r=>{const [c,x]=mk();fn(x,r);return roughen(c,r,3.5,24,110)};
+  const G4='Cọ khô',G5='Mực màu nước';
+  SHAPES.push(
+    {g:G4,id:'dry1',name:'Cọ khô ngang',seed:101,raster:true,gen:dry([{L:500,H:160}])},
+    {g:G4,id:'dry2',name:'Vệt cọ ngắn',seed:102,raster:true,gen:dry([{L:330,H:200,dry:.4}])},
+    {g:G4,id:'dry3',name:'Vệt cọ dài',seed:103,raster:true,gen:dry([{L:560,H:110,dry:.55}])},
+    {g:G4,id:'dry4',name:'Cọ khô đậm',seed:104,raster:true,gen:dry([{L:420,H:290,dry:.3,n:80}])},
+    {g:G4,id:'dry5',name:'Cọ khô chéo',seed:105,raster:true,gen:dry([{L:540,H:140,ang:-24}])},
+    {g:G4,id:'dry6',name:'Cọ cong',seed:106,raster:true,gen:dry([{L:500,H:130,curve:-70,cy:330}])},
+    {g:G4,id:'dry7',name:'Hai vệt cọ',seed:107,raster:true,gen:dry([{L:480,H:130,cy:200},{L:440,H:130,cy:410,cx:320}])},
+    {g:G4,id:'dry8',name:'Ba vệt cọ',seed:108,raster:true,gen:dry([{L:420,H:100,cy:150,cx:280},{L:500,H:100,cy:300},{L:380,H:100,cy:450,cx:320}])},
+    {g:G4,id:'dry9',name:'Vòng cọ tròn',seed:109,raster:true,gen:scribble},
+    {g:G4,id:'dry10',name:'Cọ khô dọc',seed:110,raster:true,gen:dry([{L:500,H:170,ang:90}])},
+    {g:G4,id:'dry11',name:'Cọ khô xơ',seed:111,raster:true,gen:dry([{L:500,H:180,dry:.95,n:52}])},
+    {g:G4,id:'dry12',name:'Chữ X nét cọ',seed:112,raster:true,gen:dry([{L:520,H:110,ang:35},{L:520,H:110,ang:-35}])},
+
+    {g:G5,id:'ink1',name:'Giọt mực tròn',seed:201,raster:true,gen:ink((x,r)=>{blob(x,r,300,310,185,{wob:0.05});sats(x,r,300,310,2,215,250,14,26)})},
+    {g:G5,id:'ink2',name:'Mực loang lớn',seed:202,raster:true,gen:ink((x,r)=>{blob(x,r,300,300,175,{wob:0.16});sats(x,r,300,300,4,220,265,10,28)})},
+    {g:G5,id:'ink3',name:'Mực bắn tia',seed:203,raster:true,gen:ink((x,r)=>{blob(x,r,300,300,140,{wob:0.08,spikes:14,spikeLen:0.55});sats(x,r,300,300,8,215,275,5,14)})},
+    {g:G5,id:'ink4',name:'Mực văng nhỏ',seed:204,raster:true,gen:ink((x,r)=>{blob(x,r,300,300,105,{wob:0.1,spikes:18,spikeLen:0.6});sats(x,r,300,300,16,160,280,4,16)})},
+    {g:G5,id:'ink5',name:'Mực chảy dài',seed:205,raster:true,gen:ink((x,r)=>{blob(x,r,300,300,150,{wob:0.12,sx:1.7,sy:0.62,rot:-0.55,spikes:5,spikeLen:0.3});sats(x,r,300,300,6,230,270,6,16)})},
+    {g:G5,id:'ink6',name:'Mực nhỏ giọt',seed:206,raster:true,gen:ink((x,r)=>{blob(x,r,300,230,165,{wob:0.1});
+      for(const dx of [-110,-45,20,90]){const w=10+r()*12,y=380+r()*150;x.lineWidth=w*2;x.beginPath();x.moveTo(300+dx,300);x.lineTo(300+dx,y);x.stroke();x.beginPath();x.arc(300+dx,y,w*1.35,0,7);x.fill()}})},
+    {g:G5,id:'ink7',name:'Hai giọt mực',seed:207,raster:true,gen:ink((x,r)=>{blob(x,r,250,350,160,{wob:0.1});blob(x,r,420,160,95,{wob:0.12});sats(x,r,300,300,4,230,270,8,18)})},
+    {g:G5,id:'ink8',name:'Chùm giọt mực',seed:208,raster:true,gen:ink((x,r)=>{
+      const pts=[[210,220,90],[380,190,70],[300,370,100],[450,380,60],[150,420,55],[420,520,35],[120,120,30],[500,110,28],[250,520,30]];
+      for(const [px,py,s] of pts)blob(x,r,px,py,s*(0.85+r()*0.3),{wob:0.12,spikes:r()<.4?5:0,spikeLen:0.3})})},
+    {g:G5,id:'ink9',name:'Vệt giọt rơi',seed:209,raster:true,gen:ink((x,r)=>{
+      for(let i=0;i<7;i++){const t=i/6;blob(x,r,110+t*380,470-t*340+Math.sin(t*5)*30,95*(1-t*0.75),{wob:0.12,spikes:i<2?6:0,spikeLen:0.3})}})},
+    {g:G5,id:'ink10',name:'Mực có đuôi',seed:210,raster:true,gen:ink((x,r)=>{blob(x,r,260,340,165,{wob:0.08});
+      x.beginPath();x.moveTo(330,230);x.quadraticCurveTo(430,160,480,90);x.quadraticCurveTo(440,170,390,260);x.fill();
+      x.beginPath();x.arc(492,76,22,0,7);x.fill();sats(x,r,260,340,3,210,240,10,20)})},
+    {g:G5,id:'ink11',name:'Mực răng cưa',seed:211,raster:true,gen:ink((x,r)=>{blob(x,r,300,300,165,{wob:0.06,spikes:34,spikeLen:0.22});sats(x,r,300,300,6,230,275,6,14)})},
+    {g:G5,id:'ink12',name:'Mực loang méo',seed:212,raster:true,gen:ink((x,r)=>{blob(x,r,300,300,170,{wob:0.26});sats(x,r,300,300,3,230,265,10,22)})},
+  );
   const state={
     shape:SHAPES[0],custom:null,photo:null,zoom:1,rot:0,ox:0,oy:0,bg:'none',bgColor:'#F2C14E',
   };
-  SHAPES.forEach(s=>{s.path=new Path2D(s.gen(rng(s.seed||1)))});
+  SHAPES.forEach(s=>{if(!s.raster)s.path=new Path2D(s.gen(rng(s.seed||1)))});
 
   const $=id=>document.getElementById(id);
   const view=$('view'),vctx=view.getContext('2d');
@@ -243,7 +341,8 @@ input[type=color]{width:40px;height:32px;border:0;background:none;padding:0;curs
   function drawShape(ctx,size,shape){
     ctx.save();
     ctx.translate(size/2,size/2);ctx.rotate(state.rot*Math.PI/180);ctx.translate(-size/2,-size/2);
-    if(shape.mask){
+    if(shape.raster&&!shape.mask){/* still generating */}
+    else if(shape.mask){
       const m=shape.mask,pad=size*0.04,s=Math.min((size-2*pad)/m.width,(size-2*pad)/m.height);
       ctx.drawImage(m,(size-m.width*s)/2,(size-m.height*s)/2,m.width*s,m.height*s);
     }else{
@@ -275,7 +374,7 @@ input[type=color]{width:40px;height:32px;border:0;background:none;padding:0;curs
   const current=()=>state.custom&&state.shape==='custom'?state.custom:state.shape;
 
   // ---------- shape gallery ----------
-  const shapesEl=$('shapes');
+  const shapesEl=$('shapes');const thumbs={};
   function buildGallery(){
     shapesEl.innerHTML='';
     const list=[...SHAPES];if(state.custom)list.push({...state.custom,g:'Của bạn',id:'custom',name:'Hình của bạn'});
@@ -289,7 +388,7 @@ input[type=color]{width:40px;height:32px;border:0;background:none;padding:0;curs
       b.append(c,document.createTextNode(s.name));
       b.onclick=()=>{state.shape=s.id==='custom'?'custom':s;buildGallery();update()};
       shapesEl.append(b);
-      render(c.getContext('2d'),140,s.id==='custom'?state.custom:s,false);
+      thumbs[s.id]=c;render(c.getContext('2d'),140,s.id==='custom'?state.custom:s,false);
     });
     $('reroll').disabled=state.shape==='custom'||!!state.shape.fixed;
   }
@@ -343,7 +442,7 @@ input[type=color]{width:40px;height:32px;border:0;background:none;padding:0;curs
   $('bgMode').onchange=e=>{state.bg=e.target.value;update()};
   $('bgColor').oninput=e=>{state.bgColor=e.target.value;if(state.bg!=='color'){state.bg='color';$('bgMode').value='color'}update()};
   $('resetPos').onclick=()=>{state.ox=state.oy=0;update()};
-  $('reroll').onclick=()=>{const s=state.shape;if(s==='custom')return;s.seed=(Math.random()*1e9)|0;s.path=new Path2D(s.gen(rng(s.seed)));buildGallery();update()};
+  $('reroll').onclick=()=>{const s=state.shape;if(s==='custom')return;s.seed=(Math.random()*1e9)|0;if(s.raster)s.mask=s.gen(rng(s.seed));else s.path=new Path2D(s.gen(rng(s.seed)));buildGallery();update()};
 
   // drag to pan, pinch to zoom
   const stage=$('stage');const pts=new Map();let gest=null;
@@ -415,6 +514,10 @@ input[type=color]{width:40px;height:32px;border:0;background:none;padding:0;curs
 
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{buildGallery();update()});
   buildGallery();update();
+  // build the textured shapes a few at a time so the page stays responsive
+  (async()=>{for(const s of SHAPES){if(!s.raster||s.mask)continue;
+    await new Promise(r=>setTimeout(r,0));s.mask=s.gen(rng(s.seed));
+    const c=thumbs[s.id];if(c)render(c.getContext('2d'),140,s,false);if(current()===s)update()}})();
 })();
 </script>
 </body>

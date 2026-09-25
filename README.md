@@ -1,12 +1,12 @@
 # ✂️ Cắt ảnh theo vết loang
 
-Trang web nhỏ giúp cắt ảnh theo **30 hình vết**: vết loang, vết mực, nét cọ, giấy xé, đám mây, trái tim… rồi tải về ảnh PNG nền trong suốt (2000×2000 px).
+Trang web nhỏ giúp cắt ảnh theo **54 hình vết**: vết loang, vết mực, nét cọ, giấy xé, đám mây, trái tim… rồi tải về ảnh PNG nền trong suốt (2000×2000 px).
 
 Mọi xử lý diễn ra ngay trên trình duyệt, ảnh của bạn **không được tải lên máy chủ nào**.
 
 ## Tính năng
 
-- 30 hình vết chia 3 nhóm, phần lớn có nút “Đổi dáng khác” để tạo biến thể mới
+- 54 hình vết chia 5 nhóm (có cọ khô và mực màu nước với mép xơ tự nhiên), phần lớn có nút “Đổi dáng khác” để tạo biến thể mới
 - Dùng hình vết của riêng bạn (PNG trong suốt, hoặc vết màu trên nền trắng)
 - Kéo để di chuyển ảnh, cuộn chuột hoặc chụm hai ngón để phóng to, xoay hình vết
 - Nền trong suốt hoặc nền màu
