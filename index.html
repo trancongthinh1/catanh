@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cắt ảnh theo vết loang</title>
+<meta name="description" content="Cắt ảnh theo 30 hình vết loang, nét cọ, giấy xé… và tải về PNG nền trong suốt. Chạy ngay trên trình duyệt, ảnh không rời khỏi máy bạn.">
+<meta name="theme-color" content="#EAF0EC" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#131A1C" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="icons/favicon.ico" sizes="any">
+<link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Cắt ảnh">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta property="og:title" content="Cắt ảnh theo vết loang">
+<meta property="og:image" content="icons/icon-512.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=Be+Vietnam+Pro:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EAF0EC; --surface:#FFFFFF; --ink:#1C2A2F; --muted:#5B6B70; --line:#CFDAD4;
+  --cobalt:#2B59C3; --cobalt-ink:#FFFFFF; --sun:#F2C14E; --check-a:#F4F7F5; --check-b:#E1E8E4;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#131A1C; --surface:#1C2528; --ink:#E6EEEA; --muted:#98A8A5; --line:#2E3B3F;
+    --cobalt:#6E95F0; --cobalt-ink:#0E1420; --sun:#F2C14E; --check-a:#1F292C; --check-b:#263236;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#131A1C; --surface:#1C2528; --ink:#E6EEEA; --muted:#98A8A5; --line:#2E3B3F;
+  --cobalt:#6E95F0; --cobalt-ink:#0E1420; --sun:#F2C14E; --check-a:#1F292C; --check-b:#263236;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.55 "Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:1180px;margin:0 auto;padding:28px 20px 48px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 32px;margin-bottom:24px}
+h1 .logo{width:.9em;height:.9em;vertical-align:-.08em;margin-right:.22em;border-radius:22%}
+h1{font-family:"Bricolage Grotesque","Be Vietnam Pro",system-ui,sans-serif;font-weight:800;font-size:clamp(2rem,5vw,3.4rem);line-height:1;letter-spacing:-.02em;margin:0}
+header p{margin:0;color:var(--muted);max-width:34ch}
+.grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(300px,1fr);gap:28px;align-items:start}
+@media (max-width:860px){.grid{grid-template-columns:1fr}}
+
+.stage{position:relative;aspect-ratio:1;width:100%;border-radius:28px;overflow:hidden;
+  background:repeating-conic-gradient(var(--check-a) 0 25%,var(--check-b) 0 50%) 0 0/28px 28px;
+  touch-action:none;cursor:grab}
+.stage.dragging{cursor:grabbing}
+.stage.drop{outline:3px dashed var(--cobalt);outline-offset:-10px}
+#view{width:100%;height:100%;display:block}
+.hint{position:absolute;left:0;right:0;bottom:16px;text-align:center;font-size:.85rem;color:var(--muted);pointer-events:none}
+
+.panel{display:flex;flex-direction:column;gap:22px}
+.block h2{font-family:"Bricolage Grotesque","Be Vietnam Pro",system-ui,sans-serif;font-weight:500;font-size:1.15rem;margin:0 0 10px}
+.btn{appearance:none;border:0;border-radius:999px;padding:12px 20px;font:600 .95rem/1 "Be Vietnam Pro",system-ui,sans-serif;cursor:pointer;background:var(--cobalt);color:var(--cobalt-ink)}
+.btn.ghost{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--line)}
+.btn:focus-visible,.shape:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+
+.shapes{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:10px}
+.shapes .group{grid-column:1/-1;margin:8px 0 0;font:600 .85rem/1.3 "Be Vietnam Pro",system-ui,sans-serif;color:var(--muted)}
+.shapes .group:first-child{margin-top:0}
+.btn:disabled{opacity:.45;cursor:default}
+.shape{appearance:none;border:0;padding:6px;border-radius:18px;background:var(--surface);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--muted);font:500 .75rem/1.2 "Be Vietnam Pro",system-ui,sans-serif;box-shadow:inset 0 0 0 1.5px var(--line)}
+.shape canvas{width:100%;aspect-ratio:1;display:block}
+.shape[aria-pressed="true"]{box-shadow:inset 0 0 0 2.5px var(--cobalt);color:var(--ink)}
+
+label.ctl{display:grid;grid-template-columns:92px 1fr 44px;align-items:center;gap:10px;font-size:.9rem;margin:6px 0}
+label.ctl output{text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--cobalt)}
+select{font:inherit;color:var(--ink);background:var(--surface);border:1.5px solid var(--line);border-radius:10px;padding:6px 10px}
+input[type=color]{width:40px;height:32px;border:0;background:none;padding:0;cursor:pointer}
+.note{font-size:.85rem;color:var(--muted);margin:8px 0 0}
+.status{font-size:.9rem;min-height:1.4em;color:var(--muted)}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1><img src="icons/favicon.svg" alt="" class="logo">Cắt ảnh theo vết loang</h1>
+    <p>Chọn ảnh, chọn hình vết, kéo để chỉnh vị trí rồi tải về dạng PNG nền trong suốt.</p>
+  </header>
+
+  <div class="grid">
+    <div>
+      <div class="stage" id="stage" aria-label="Khung xem trước, kéo để di chuyển ảnh">
+        <canvas id="view" width="1000" height="1000"></canvas>
+        <div class="hint" id="hint">Chạm để chọn ảnh, hoặc kéo thả ảnh vào đây</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="block">
+        <h2>Ảnh của bạn</h2>
+        <div class="row">
+          <button class="btn" id="pickPhoto">Chọn ảnh</button>
+          <input type="file" id="photoInput" accept="image/*" class="vh">
+        </div>
+      </div>
+
+      <div class="block">
+        <h2>Hình vết</h2>
+        <div class="shapes" id="shapes"></div>
+        <div class="row" style="margin-top:12px">
+          <button class="btn ghost" id="reroll">Đổi dáng khác</button>
+          <button class="btn ghost" id="pickMask">Dùng hình mẫu của bạn</button>
+          <input type="file" id="maskInput" accept="image/*" class="vh">
+        </div>
+        <p class="note">Trên điện thoại: kéo một ngón để di chuyển ảnh, chụm hai ngón để phóng to.</p>
+        <p class="note">Có sẵn một hình vết (ví dụ vết màu xanh trên nền trắng hoặc PNG trong suốt)? Tải lên bằng “Dùng hình mẫu của bạn”, phần có màu sẽ thành khung cắt.</p>
+      </div>
+
+      <div class="block">
+        <h2>Tinh chỉnh</h2>
+        <label class="ctl">Phóng to <input type="range" id="zoom" min="1" max="4" step="0.01" value="1"><output id="zoomOut">100%</output></label>
+        <label class="ctl">Xoay hình <input type="range" id="rot" min="-180" max="180" step="1" value="0"><output id="rotOut">0°</output></label>
+        <label class="ctl">Nền
+          <select id="bgMode"><option value="none">Trong suốt</option><option value="color">Màu</option></select>
+          <input type="color" id="bgColor" value="#F2C14E" aria-label="Màu nền">
+        </label>
+        <div class="row" style="margin-top:8px">
+          <button class="btn ghost" id="resetPos">Căn giữa ảnh</button>
+        </div>
+      </div>
+
+      <div class="block">
+        <div class="row">
+          <button class="btn" id="download">Tải ảnh PNG</button>
+          <button class="btn ghost" id="share" hidden>Chia sẻ / Lưu vào Ảnh</button>
+        </div>
+        <p class="status" id="status" role="status"></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  // ---------- seeded random ----------
+  function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+
+  // closed smooth path through points (Catmull-Rom -> Bezier)
+  function smooth(pts,tension=1){
+    const n=pts.length;let d=`M${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
+    for(let i=0;i<n;i++){
+      const p0=pts[(i-1+n)%n],p1=pts[i],p2=pts[(i+1)%n],p3=pts[(i+2)%n];
+      const c1=[p1[0]+(p2[0]-p0[0])/6*tension,p1[1]+(p2[1]-p0[1])/6*tension];
+      const c2=[p2[0]-(p3[0]-p1[0])/6*tension,p2[1]-(p3[1]-p1[1])/6*tension];
+      d+=`C${c1[0].toFixed(1)} ${c1[1].toFixed(1)} ${c2[0].toFixed(1)} ${c2[1].toFixed(1)} ${p2[0].toFixed(1)} ${p2[1].toFixed(1)}`;
+    }
+    return d+'Z';
+  }
+  // circles drawn clockwise so every piece unions with the rest
+  const circle=(cx,cy,r)=>`M${(cx-r).toFixed(1)} ${cy.toFixed(1)}a${r.toFixed(1)} ${r.toFixed(1)} 0 1 1 ${(2*r).toFixed(1)} 0a${r.toFixed(1)} ${r.toFixed(1)} 0 1 1 ${(-2*r).toFixed(1)} 0Z`;
+  function radialXY(n,rx,ry,vary,r,cx=100,cy=100){
+    const pts=[];const off=r()*Math.PI*2;
+    for(let i=0;i<n;i++){const a=off+i/n*Math.PI*2;const k=vary(i,r);pts.push([cx+Math.cos(a)*rx*k,cy+Math.sin(a)*ry*k])}
+    return pts;
+  }
+  const radial=(n,R,vary,r)=>radialXY(n,R,R,vary,r);
+  const rotPts=(pts,deg)=>{const t=deg*Math.PI/180,c=Math.cos(t),s=Math.sin(t);return pts.map(([x,y])=>[100+(x-100)*c-(y-100)*s,100+(x-100)*s+(y-100)*c])};
+  function droplets(r,count,minD,maxD,minR,maxR){
+    let d='';
+    for(let i=0;i<count;i++){const a=r()*Math.PI*2,dist=minD+r()*(maxD-minD),s=minR+r()*(maxR-minR);
+      d+=circle(100+Math.cos(a)*dist,100+Math.sin(a)*dist,s)}
+    return d;
+  }
+  function brushPts(r,{cy=100,h=44,x0=18,x1=182,amp=0,N=14}={}){
+    const top=[],bot=[];
+    for(let i=0;i<=N;i++){const t=i/N,x=x0+t*(x1-x0),taper=Math.sin(t*Math.PI)**0.35,mid=cy+Math.sin(t*Math.PI*2)*amp;
+      top.push([x+(r()-.5)*2,mid-h*taper+(r()-.5)*6]);bot.unshift([x+(r()-.5)*2,mid+h*taper+(r()-.5)*6])}
+    return top.concat(bot);
+  }
+  function edgePts(r,x0,y0,x1,y1,step,j){
+    const pts=[],side=(ax,ay,bx,by)=>{const n=Math.max(2,Math.round(Math.hypot(bx-ax,by-ay)/step));
+      for(let i=0;i<n;i++){const t=i/n;pts.push([ax+(bx-ax)*t+(r()-.5)*j,ay+(by-ay)*t+(r()-.5)*j])}};
+    side(x0,y0,x1,y0);side(x1,y0,x1,y1);side(x1,y1,x0,y1);side(x0,y1,x0,y0);return pts;
+  }
+  const scatter=(r,n,maxD,minR,maxR)=>{let d='';for(let i=0;i<n;i++){const a=r()*Math.PI*2,dist=Math.sqrt(r())*maxD,s=minR+r()*(maxR-minR);d+=circle(100+Math.cos(a)*dist,100+Math.sin(a)*dist,Math.min(s,95-dist))}return d};
+
+  // ---------- shape library (200x200 space) ----------
+  const G1='Vết loang & mực',G2='Nét cọ & giấy xé',G3='Hình vui';
+  const SHAPES=[
+    {g:G1,id:'blob',name:'Loang mềm',seed:7,gen:r=>smooth(radial(8,78,(i,r)=>0.82+r()*0.26,r))},
+    {g:G1,id:'splash',name:'Vết văng',seed:21,gen:r=>smooth(radial(14,64,(i,r)=>i%2?0.78+r()*0.15:1.0+r()*0.3,r))+droplets(r,6,86,94,3,7)},
+    {g:G1,id:'ink',name:'Vết mực',seed:3,gen:r=>smooth(radial(36,58,(i,r)=>r()<0.3?1.25+r()*0.35:0.9+r()*0.12,r),0.9)+droplets(r,10,82,95,2,5)},
+    {g:G1,id:'bigsplat',name:'Vết bắn lớn',seed:44,gen:r=>smooth(radial(28,52,(i,r)=>r()<0.4?1.45+r()*0.3:0.95+r()*0.1,r),0.85)+droplets(r,8,86,95,2,5)},
+    {g:G1,id:'amoeba',name:'Tế bào',seed:13,gen:r=>smooth(radial(7,82,(i,r)=>0.62+r()*0.45,r))},
+    {g:G1,id:'pebble',name:'Viên sỏi',seed:17,gen:r=>smooth(radialXY(10,86,62,(i,r)=>0.93+r()*0.1,r))},
+    {g:G1,id:'puddle',name:'Vũng nước',seed:31,gen:r=>smooth(radialXY(12,84,52,(i,r)=>0.82+r()*0.22,r))+droplets(r,4,80,92,3,6)},
+    {g:G1,id:'longstain',name:'Vệt loang dài',seed:8,gen:r=>smooth(rotPts(radialXY(14,90,40,(i,r)=>0.85+r()*0.2,r),-30))},
+    {g:G1,id:'drips',name:'Mực nhỏ giọt',seed:12,gen:r=>{
+      let d=smooth(radialXY(12,72,46,(i,r)=>0.88+r()*0.16,r,100,72));
+      for(const x of [58,84,112,140]){const w=6+r()*5,y=110+r()*70;d+=`M${x-w} 90H${x+w}V${y.toFixed(1)}H${x-w}Z`+circle(x,y,w*1.25)}
+      return d}},
+    {g:G1,id:'dots',name:'Chấm bi',seed:4,gen:r=>scatter(r,16,72,10,26)},
+
+    {g:G2,id:'brush',name:'Nét cọ',seed:11,gen:r=>smooth(brushPts(r),0.8)},
+    {g:G2,id:'brushV',name:'Nét cọ dọc',seed:19,gen:r=>smooth(brushPts(r,{h:40}).map(([x,y])=>[y,x]),0.8)},
+    {g:G2,id:'brushWave',name:'Nét cọ lượn',seed:23,gen:r=>smooth(brushPts(r,{h:30,amp:26,N:16}),0.8)},
+    {g:G2,id:'brush2',name:'Hai nét cọ',seed:29,gen:r=>smooth(brushPts(r,{cy:66,h:28,x0:14,x1:176}),0.8)+smooth(brushPts(r,{cy:136,h:28,x0:26,x1:188}),0.8)},
+    {g:G2,id:'roughCircle',name:'Tròn nét cọ',seed:37,gen:r=>smooth(radial(40,82,(i,r)=>0.97+r()*0.05,r))},
+    {g:G2,id:'roughSquare',name:'Vuông nét cọ',seed:41,gen:r=>smooth(edgePts(r,26,26,174,174,14,7),0.5)},
+    {g:G2,id:'tornPaper',name:'Giấy xé',seed:43,gen:r=>smooth(edgePts(r,24,44,176,156,7,8),0)},
+    {g:G2,id:'tornCircle',name:'Tròn giấy xé',seed:47,gen:r=>smooth(radial(72,82,(i,r)=>0.93+r()*0.09,r),0)},
+
+    {g:G3,id:'cloud',name:'Đám mây',seed:5,gen:r=>{
+      let d='';const cs=[[62,112,38],[100,86,48],[140,108,40],[98,130,40],[124,132,32],[72,136,28]];
+      for(const [x,y,s] of cs)d+=circle(x+(r()-.5)*6,y+(r()-.5)*6,s*(0.95+r()*0.1));return d}},
+    {g:G3,id:'heart',name:'Trái tim',fixed:true,gen:()=>'M100 176C44 136 14 104 22 64C30 26 78 20 100 56C122 20 170 26 178 64C186 104 156 136 100 176Z'},
+    {g:G3,id:'drop',name:'Giọt nước',seed:9,gen:r=>{
+      const pts=[];for(let i=0;i<24;i++){const t=i/24*Math.PI*2;const x=100+Math.sin(t)*62*(0.94+r()*0.08);
+        const y=118-Math.cos(t)*62-(Math.cos(t)>0?Math.pow(Math.cos(t),6)*40:0);pts.push([x,y])}
+      return smooth(pts)}},
+    {g:G3,id:'flower',name:'Bông hoa',seed:2,gen:r=>smooth(radial(24,74,(i,r)=>(i%4<2?1.1:0.72)+(r()-.5)*0.08,r))},
+    {g:G3,id:'softstar',name:'Sao mềm',seed:6,gen:r=>smooth(radial(10,88,(i,r)=>(i%2?0.5:1)*(0.95+r()*0.08),r),0.7)},
+    {g:G3,id:'sun',name:'Mặt trời',seed:14,gen:r=>smooth(radial(32,84,(i,r)=>i%2?0.8:1,r),0.5)},
+    {g:G3,id:'scallop',name:'Viền sò',seed:16,gen:r=>{let d=circle(100,100,64);for(let i=0;i<14;i++){const a=i/14*Math.PI*2;d+=circle(100+Math.cos(a)*66,100+Math.sin(a)*66,20)}return d}},
+    {g:G3,id:'clover',name:'Cỏ bốn lá',seed:18,gen:r=>{let d=circle(100,100,30);for(let i=0;i<4;i++){const a=Math.PI/4+i*Math.PI/2;d+=circle(100+Math.cos(a)*40,100+Math.sin(a)*40,42)}return d}},
+    {g:G3,id:'leaf',name:'Chiếc lá',fixed:true,gen:()=>'M100 18C154 50 174 114 100 182C26 114 46 50 100 18Z'},
+    {g:G3,id:'bubbles',name:'Chùm bong bóng',seed:27,gen:r=>{let d='';const cs=[[82,86,46],[132,72,30],[132,126,38],[80,142,26],[152,160,16],[46,52,14]];for(const [x,y,s] of cs)d+=circle(x+(r()-.5)*8,y+(r()-.5)*8,s*(0.92+r()*0.14));return d}},
+    {g:G3,id:'moon',name:'Trăng khuyết',fixed:true,gen:()=>'M130 28A78 78 0 1 0 130 172A80 80 0 0 1 130 28Z'},
+    {g:G3,id:'speech',name:'Bong bóng thoại',seed:33,gen:r=>smooth(radialXY(12,80,58,(i,r)=>0.94+r()*0.08,r,100,86))+'M66 128L106 140L50 184Z'},
+  ];
+  const state={
+    shape:SHAPES[0],custom:null,photo:null,zoom:1,rot:0,ox:0,oy:0,bg:'none',bgColor:'#F2C14E',
+  };
+  SHAPES.forEach(s=>{s.path=new Path2D(s.gen(rng(s.seed||1)))});
+
+  const $=id=>document.getElementById(id);
+  const view=$('view'),vctx=view.getContext('2d');
+  const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+  // ---------- rendering ----------
+  function drawShape(ctx,size,shape){
+    ctx.save();
+    ctx.translate(size/2,size/2);ctx.rotate(state.rot*Math.PI/180);ctx.translate(-size/2,-size/2);
+    if(shape.mask){
+      const m=shape.mask,pad=size*0.04,s=Math.min((size-2*pad)/m.width,(size-2*pad)/m.height);
+      ctx.drawImage(m,(size-m.width*s)/2,(size-m.height*s)/2,m.width*s,m.height*s);
+    }else{
+      ctx.scale(size/200,size/200);ctx.fillStyle='#000';ctx.fill(shape.path);
+    }
+    ctx.restore();
+  }
+  function drawPhoto(ctx,size){
+    const img=state.photo;
+    const base=Math.max(size/img.width,size/img.height)*state.zoom;
+    const w=img.width*base,h=img.height*base,k=size/1000;
+    ctx.drawImage(img,(size-w)/2+state.ox*k,(size-h)/2+state.oy*k,w,h);
+  }
+  function render(ctx,size,shape,withBg){
+    ctx.clearRect(0,0,size,size);
+    const off=document.createElement('canvas');off.width=off.height=size;
+    const o=off.getContext('2d');
+    drawShape(o,size,shape);
+    o.globalCompositeOperation='source-in';
+    if(state.photo)drawPhoto(o,size);else{o.fillStyle=css('--cobalt')||'#2B59C3';o.fillRect(0,0,size,size)}
+    if(withBg&&state.bg==='color'){ctx.fillStyle=state.bgColor;ctx.fillRect(0,0,size,size)}
+    ctx.drawImage(off,0,0);
+  }
+  let raf=0;
+  function update(){cancelAnimationFrame(raf);raf=requestAnimationFrame(()=>{
+    render(vctx,1000,current(),true);
+    $('hint').hidden=!!state.photo;
+  })}
+  const current=()=>state.custom&&state.shape==='custom'?state.custom:state.shape;
+
+  // ---------- shape gallery ----------
+  const shapesEl=$('shapes');
+  function buildGallery(){
+    shapesEl.innerHTML='';
+    const list=[...SHAPES];if(state.custom)list.push({...state.custom,g:'Của bạn',id:'custom',name:'Hình của bạn'});
+    let group='';
+    list.forEach(s=>{
+      if(s.g!==group){group=s.g;const h=document.createElement('h3');h.className='group';h.textContent=group;shapesEl.append(h)}
+      const b=document.createElement('button');b.className='shape';b.type='button';
+      const isSel=(s.id==='custom'&&state.shape==='custom')||(state.shape===s);
+      b.setAttribute('aria-pressed',isSel);
+      const c=document.createElement('canvas');c.width=c.height=140;
+      b.append(c,document.createTextNode(s.name));
+      b.onclick=()=>{state.shape=s.id==='custom'?'custom':s;buildGallery();update()};
+      shapesEl.append(b);
+      render(c.getContext('2d'),140,s.id==='custom'?state.custom:s,false);
+    });
+    $('reroll').disabled=state.shape==='custom'||!!state.shape.fixed;
+  }
+
+  // ---------- loading images ----------
+  function loadImage(file){return new Promise((res,rej)=>{
+    const fr=new FileReader();fr.onload=()=>{const im=new Image();im.onload=()=>res(im);im.onerror=rej;im.src=fr.result};fr.onerror=rej;fr.readAsDataURL(file)})}
+  async function setPhoto(file){
+    if(!file||!file.type.startsWith('image/')){say('Tệp này không phải ảnh. Hãy chọn JPG, PNG hoặc WebP.');return}
+    try{state.photo=await loadImage(file);state.ox=state.oy=0;state.zoom=1;$('zoom').value=1;$('zoomOut').textContent='100%';say('');buildGallery();update()}
+    catch{say('Không đọc được ảnh này. Thử một ảnh khác.')}
+  }
+  // turn any shape picture into an alpha mask
+  function makeMask(img){
+    const max=1200,s=Math.min(1,max/Math.max(img.width,img.height));
+    const c=document.createElement('canvas');c.width=Math.round(img.width*s);c.height=Math.round(img.height*s);
+    const x=c.getContext('2d');x.drawImage(img,0,0,c.width,c.height);
+    const d=x.getImageData(0,0,c.width,c.height),p=d.data;
+    let transparent=0;for(let i=3;i<p.length;i+=4*7)if(p[i]<250)transparent++;
+    const useAlpha=transparent>p.length/4/7*0.02;
+    let minX=c.width,minY=c.height,maxX=0,maxY=0;
+    for(let i=0,j=0;i<p.length;i+=4,j++){
+      let a;
+      if(useAlpha)a=p[i+3];
+      else{const dist=765-(p[i]+p[i+1]+p[i+2]);a=Math.min(255,Math.max(0,(dist-30)*2.2))}
+      p[i]=p[i+1]=p[i+2]=0;p[i+3]=a;
+      if(a>20){const X=j%c.width,Y=(j/c.width)|0;if(X<minX)minX=X;if(X>maxX)maxX=X;if(Y<minY)minY=Y;if(Y>maxY)maxY=Y}
+    }
+    x.putImageData(d,0,0);
+    if(maxX<=minX||maxY<=minY)return null;
+    const t=document.createElement('canvas');t.width=maxX-minX+1;t.height=maxY-minY+1;
+    t.getContext('2d').drawImage(c,minX,minY,t.width,t.height,0,0,t.width,t.height);
+    return t;
+  }
+  async function setMask(file){
+    if(!file||!file.type.startsWith('image/')){say('Hình mẫu phải là một tệp ảnh.');return}
+    try{const im=await loadImage(file);const m=makeMask(im);
+      if(!m){say('Không tìm thấy vùng có màu trong hình mẫu. Dùng hình có vết đậm trên nền trắng hoặc PNG trong suốt.');return}
+      state.custom={mask:m};state.shape='custom';say('Đã dùng hình mẫu của bạn làm khung cắt.');buildGallery();update()}
+    catch{say('Không đọc được hình mẫu này.')}
+  }
+
+  // ---------- controls ----------
+  const say=t=>$('status').textContent=t;
+  $('pickPhoto').onclick=()=>$('photoInput').click();
+  $('photoInput').onchange=e=>{setPhoto(e.target.files[0]);e.target.value=''};
+  $('pickMask').onclick=()=>$('maskInput').click();
+  $('maskInput').onchange=e=>{setMask(e.target.files[0]);e.target.value=''};
+  $('zoom').oninput=e=>{state.zoom=+e.target.value;$('zoomOut').textContent=Math.round(state.zoom*100)+'%';update()};
+  $('rot').oninput=e=>{state.rot=+e.target.value;$('rotOut').textContent=state.rot+'°';buildGallery();update()};
+  $('bgMode').onchange=e=>{state.bg=e.target.value;update()};
+  $('bgColor').oninput=e=>{state.bgColor=e.target.value;if(state.bg!=='color'){state.bg='color';$('bgMode').value='color'}update()};
+  $('resetPos').onclick=()=>{state.ox=state.oy=0;update()};
+  $('reroll').onclick=()=>{const s=state.shape;if(s==='custom')return;s.seed=(Math.random()*1e9)|0;s.path=new Path2D(s.gen(rng(s.seed)));buildGallery();update()};
+
+  // drag to pan, pinch to zoom
+  const stage=$('stage');const pts=new Map();let gest=null;
+  const setZoom=z=>{state.zoom=Math.min(4,Math.max(1,z));$('zoom').value=state.zoom;$('zoomOut').textContent=Math.round(state.zoom*100)+'%'};
+  function startGesture(){
+    const p=[...pts.values()];
+    gest={ox:state.ox,oy:state.oy,zoom:state.zoom,cx:(p[0].x+(p[1]||p[0]).x)/2,cy:(p[0].y+(p[1]||p[0]).y)/2,
+      dist:p[1]?Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y):0};
+  }
+  stage.addEventListener('pointerdown',e=>{
+    if(!state.photo){$('photoInput').click();return}
+    stage.setPointerCapture(e.pointerId);pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    stage.classList.add('dragging');startGesture();
+  });
+  stage.addEventListener('pointermove',e=>{
+    if(!pts.has(e.pointerId)||!gest)return;pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    const p=[...pts.values()],k=1000/stage.clientWidth;
+    const cx=(p[0].x+(p[1]||p[0]).x)/2,cy=(p[0].y+(p[1]||p[0]).y)/2;
+    if(p[1]&&gest.dist){setZoom(gest.zoom*Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y)/gest.dist)}
+    state.ox=gest.ox+(cx-gest.cx)*k;state.oy=gest.oy+(cy-gest.cy)*k;update();
+  });
+  const end=e=>{pts.delete(e.pointerId);if(pts.size)startGesture();else{gest=null;stage.classList.remove('dragging')}};
+  stage.addEventListener('pointerup',end);stage.addEventListener('pointercancel',end);
+  stage.addEventListener('wheel',e=>{if(!state.photo)return;e.preventDefault();
+    setZoom(state.zoom*(e.deltaY<0?1.06:1/1.06));update()},{passive:false});
+  // drop files
+  ['dragenter','dragover'].forEach(t=>stage.addEventListener(t,e=>{e.preventDefault();stage.classList.add('drop')}));
+  ['dragleave','drop'].forEach(t=>stage.addEventListener(t,e=>{e.preventDefault();stage.classList.remove('drop')}));
+  stage.addEventListener('drop',e=>{const f=e.dataTransfer.files[0];if(f)setPhoto(f)});
+
+  // ---------- download ----------
+  let downloads=null;
+  if(window.claude&&window.claude.use)window.claude.use('downloads').then(d=>{downloads=d}).catch(()=>{});
+  async function makeFile(){
+    const out=document.createElement('canvas');out.width=out.height=2000;
+    render(out.getContext('2d'),2000,current(),true);
+    const blob=await new Promise(r=>out.toBlob(r,'image/png'));
+    const name='anh-cat-'+(state.shape==='custom'?'hinh-mau':state.shape.id)+'.png';
+    return {blob,name};
+  }
+  $('download').onclick=async()=>{
+    if(!state.photo){say('Hãy chọn ảnh trước khi tải về.');return}
+    const {blob,name}=await makeFile();
+    if(downloads){
+      try{await downloads.save({filename:name,data:blob});say('Đã lưu '+name+'.')}
+      catch(err){say(err&&err.code==='declined'?'Đã huỷ tải về.':'Không lưu được tệp. Thử lại sau giây lát.')}
+    }else{
+      const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;
+      document.body.append(a);a.click();a.remove();
+      setTimeout(()=>URL.revokeObjectURL(a.href),4000);say('Đã tải '+name+'.');
+    }
+  };
+  // native share sheet (phones): lets people save straight to Photos
+  try{
+    const probe=new File([new Blob(['x'],{type:'image/png'})],'x.png',{type:'image/png'});
+    if(navigator.canShare&&navigator.canShare({files:[probe]})&&matchMedia('(pointer: coarse)').matches)$('share').hidden=false;
+  }catch{}
+  $('share').onclick=async()=>{
+    if(!state.photo){say('Hãy chọn ảnh trước khi chia sẻ.');return}
+    const {blob,name}=await makeFile();
+    try{await navigator.share({files:[new File([blob],name,{type:'image/png'})],title:'Ảnh cắt theo vết loang'});say('')}
+    catch(err){if(err&&err.name!=='AbortError')say('Không mở được bảng chia sẻ. Dùng nút “Tải ảnh PNG”.')}
+  };
+
+  // offline support when hosted (GitHub Pages)
+  if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost')&&!/claude\.ai|claudeusercontent/.test(location.hostname)){
+    window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+  }
+
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{buildGallery();update()});
+  buildGallery();update();
+})();
+</script>
+</body>
+</html>
